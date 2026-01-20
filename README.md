@@ -36,16 +36,40 @@ Evaluation dependencies will also need to be installed in the `a4s-eval` environ
 
 ```python
 # src/my_a4s_plugin/plugin.py
-from a4s_plugin_interface.base_evaluation_plugin import BaseEvaluationPlugin
+from typing import Any
 
+from a4s_plugin_interface.models.measure import Measure
+from a4s_plugin_interface.base_evaluation_plugin import metric, BaseEvaluationPlugin, metric
+from pydantic import BaseModel, Field
 
-class MyPlugin(BaseEvaluationPlugin):
-    def evaluate(self, config_data):
-        # Heavy dependencies should be imported locally here
+# Define the configuration form schema
+class ConfigFormSchema(BaseModel):
+    threshold: float = Field(default=0.5, ge=0.0, le=1.0, multiple_of=0.1)
+
+class MyPlugin(BaseEvaluationPlugin[ConfigFormSchema]):
+    def evaluate(self, config_data: dict) -> Any:
+        # Dependencies only used during evaluation should be imported locally here
         import numpy as np
+
+        # Access configuration form data
+        config: ConfigFormSchema = self.validate_config_form_data(config_data)
+        threshold: float = config.threshold
         
         # Your evaluation logic here
-        return {"result": "success"}
+        
+        return {"MyMetric": [0.99, 0.5, 0.67], "OtherMetric": [0.01, 0.22, 0.77]}
+
+
+    @metric("MyMetric")
+    def my_metric(self, evaluation_output: Any) -> list[Measure]:
+        my_metric_results: [] | None = evaluation_output.get("MyMetric")
+        if my_metric_results is None:
+            return []
+        measures: list[Measure] = []
+        for result in my_metric_results:
+            measure = Measure(name="MyMetric", score=result)
+            measures.append(measure)
+        return measures
 ```
 
 ### 4. Export the Plugin Class
