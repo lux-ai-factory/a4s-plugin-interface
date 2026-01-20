@@ -85,13 +85,15 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
                 results.extend(metric_measures)
         return results
 
-    def set_dataset_input_provider(self, file_content: bytes | None) -> None:
+    def set_dataset_input_provider(
+        self, file_content: bytes | None
+    ) -> BaseDatasetProvider:
         """
         Optional: Initialize and return a specific input provider for the dataset.
         """
         pass
 
-    def set_model_input_provider(self, file_content: bytes | None) -> None:
+    def set_model_input_provider(self, file_content: bytes | None) -> BaseModelProvider:
         """
         Optional: Initialize and return a specific input provider for the model.
         """
