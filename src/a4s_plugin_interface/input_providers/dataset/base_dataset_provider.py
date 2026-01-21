@@ -1,7 +1,8 @@
 import math
 import random
-from abc import ABC, abstractmethod
+from abc import abstractmethod
 from typing import Any, Iterator
+from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 
 
 def is_tensor(obj):
@@ -16,12 +17,12 @@ def is_pandas_dataframe_or_series(obj):
     return "pandas" in str(type(obj)).lower()
 
 
-class BaseDatasetProvider(ABC):
+class BaseDatasetProvider(BaseInputProvider):
     def __init__(
         self, shuffle: bool = False, batch_size: int | None = None, *args, **kwargs
     ):
         # dataset could be a indexible object or a tuple of such objects
-        self._dataset = None
+        self._data = None
         self._read_args = args
         self._read_kwargs = kwargs
 
@@ -29,15 +30,15 @@ class BaseDatasetProvider(ABC):
         self.batch_size = batch_size or len(self)
 
     @abstractmethod
-    def read_data(self, *args, **kwargs) -> Any:
+    def _read_data(self, *args, **kwargs) -> Any:
         # this function should implement the logic to set the `dataset` property
         pass
 
     @property
     def dataset(self) -> Any:
-        if self._dataset is None:
-            self._dataset = self.read_data(*self._read_args, **self._read_kwargs)
-        return self._dataset
+        if self._data is None:
+            self._data = self._read_data(*self._read_args, **self._read_kwargs)
+        return self._data
 
     def __len__(self) -> int:
         if isinstance(self.dataset, tuple):
