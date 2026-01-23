@@ -1,8 +1,8 @@
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, get_args, get_origin, Callable
+from typing import Any, get_args, get_origin, Callable, Tuple
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
 from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 from a4s_plugin_interface.models.measure import Measure
@@ -17,6 +17,10 @@ def metric(name: str):
         func.metric_name = name
         return func
     return decorator
+
+class PluginFeatureFlags(BaseModel):
+    can_parse_config_from_dataset: bool = Field(False, description="Show the dataset dropdown")
+    extra: dict = Field({}, description="Additional feature flags")
 
 
 class BaseEvaluationPlugin[T:BaseModel](ABC):
@@ -33,6 +37,13 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
     dataset_input_provider: BaseInputProvider | None = None
     model_input_provider: BaseInputProvider | None = None
 
+    @property
+    def feature_flags(self) -> PluginFeatureFlags:
+        """
+        Controls UI behavior on the frontend.
+        Override this property in your subclass to change defaults.
+        """
+        return PluginFeatureFlags()
 
     @property
     def config_type(self) -> type[T]:
@@ -114,7 +125,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         Generates a JSON Schema from the Pydantic config model for the frontend UI.
         """
-        return self.config_type.model_json_schema()
+        return self.config_type.model_json_schema(mode='validation')
 
 
     def validate_config_form_data(self, config_form_data: dict) -> T:
@@ -137,3 +148,26 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         This can be overridden to add/change the structure of the input config data for use in the evaluate method
         """
         return form_schema.model_dump()
+
+    def get_full_schema(self) -> Tuple[dict, dict]:
+        """Helper to get the fresh, static baseline."""
+        return self.get_config_form_schema(), self.get_config_form_ui_schema()
+
+    # form_data passed here may be incomplete, so we don't validate and use MyConfigModel
+    # It is the developer's responsibility to check for and use data accordingly here
+    def on_config_change(self, form_data: T | None) -> Tuple[T | None, dict, dict]:
+        """
+        Hook called whenever the user changes a form value.
+        Allows the plugin to dynamically update the schema (e.g. drop downs),
+        the data (e.g. auto-fill), or the UI (e.g. hide fields).
+        """
+        # Default: Do nothing, just return what came in
+        schema, ui_schema = self.get_full_schema()
+        return form_data, schema, ui_schema
+
+
+    def parse_config_from_dataset(self) -> dict | None:
+        """
+        Optional: Try to parse a valid config from the dataset.
+        """
+        return None
