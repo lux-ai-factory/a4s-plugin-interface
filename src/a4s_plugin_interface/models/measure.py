@@ -5,6 +5,9 @@ from pydantic import BaseModel
 
 class Measure(BaseModel):
     name: str
+    description: str | None = None
+    unit: str | None = None
     score: float
     time: datetime = datetime.now()
+    error: str | None = None
     feature_pid: uuid.UUID | None = None
