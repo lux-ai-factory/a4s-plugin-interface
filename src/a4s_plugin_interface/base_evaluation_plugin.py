@@ -5,7 +5,7 @@ from typing import Any, get_args, get_origin, Callable, Tuple
 from pydantic import BaseModel, Field
 
 from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
-from a4s_plugin_interface.models.measure import Measure
+from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
 
 def metric(name: str):
@@ -66,6 +66,14 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
                 metrics.append(method.metric_name)
         return metrics
 
+    def get_metric_visualizations(self) -> list[MetricVisualization]:
+        """
+        Returns a list of MetricVisualization objects to render a list of
+        visualizations on the front end and the metrics to display for each
+
+        By default, returns a single visualization (TABLE) with all metrics
+        """
+        return [MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())]
 
     def export_metrics(self, *args, **kwargs) -> list[Measure]:
         """

@@ -1,3 +1,4 @@
+import enum
 from datetime import datetime
 import uuid
 
@@ -11,3 +12,14 @@ class Measure(BaseModel):
     time: datetime = datetime.now()
     error: str | None = None
     feature_pid: uuid.UUID | None = None
+
+
+class ChartType(str, enum.Enum):
+    TABLE = "table"
+    LINE = "line"
+    RADAR = "radar"
+
+
+class MetricVisualization(BaseModel):
+    chart_type: ChartType
+    metrics: list[str]
