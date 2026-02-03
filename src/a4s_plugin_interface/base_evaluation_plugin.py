@@ -66,10 +66,15 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
                 metrics.append(method.metric_name)
         return metrics
 
-    def get_metric_visualizations(self) -> list[MetricVisualization]:
+    def get_metric_visualizations(
+        self, is_multivalued: bool = False
+    ) -> list[MetricVisualization]:
         """
         Returns a list of MetricVisualization objects to render a list of
         visualizations on the front end and the metrics to display for each
+
+        is_multivalued is a boolean parameter that could define seperate charts
+        for multivalued metrics (i.e. time series), default is False
 
         By default, returns a single visualization (TABLE) with all metrics
         """
