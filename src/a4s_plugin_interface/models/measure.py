@@ -4,6 +4,7 @@ import uuid
 
 from pydantic import BaseModel
 
+
 class Measure(BaseModel):
     name: str
     description: str | None = None
@@ -18,6 +19,8 @@ class ChartType(str, enum.Enum):
     TABLE = "table"
     LINE = "line"
     RADAR = "radar"
+    SCATTER = "scatter"
+    KDE = "kde"
 
 
 class MetricVisualization(BaseModel):
