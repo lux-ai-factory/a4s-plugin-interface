@@ -18,6 +18,7 @@ def metric(name: str):
         return func
     return decorator
 
+
 class PluginFeatureFlags(BaseModel):
     can_parse_config_from_dataset: bool = Field(False, description="Show the dataset dropdown")
     extra: dict = Field({}, description="Additional feature flags")
@@ -45,6 +46,17 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         return PluginFeatureFlags()
 
+
+    @property
+    def display_icon(self) -> str:
+        """
+        Controls the icon displayed in the plugin list.
+        Use a Material Design icon name
+        https://fonts.google.com/icons
+        """
+        return "extension"
+
+
     @property
     def config_type(self) -> type[T]:
         """
@@ -66,6 +78,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
                 metrics.append(method.metric_name)
         return metrics
 
+
     def get_metric_visualizations(self) -> list[MetricVisualization]:
         """
         Returns a list of MetricVisualization objects to render a list of
@@ -74,6 +87,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         By default, returns a single visualization (TABLE) with all metrics
         """
         return [MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())]
+
 
     def export_metrics(self, *args, **kwargs) -> list[Measure]:
         """
@@ -160,6 +174,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
     def get_full_schema(self) -> Tuple[dict, dict]:
         """Helper to get the fresh, static baseline."""
         return self.get_config_form_schema(), self.get_config_form_ui_schema()
+
 
     # form_data passed here may be incomplete, so we don't validate and use MyConfigModel
     # It is the developer's responsibility to check for and use data accordingly here
