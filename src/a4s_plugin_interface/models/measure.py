@@ -21,6 +21,7 @@ class ChartType(str, enum.Enum):
     RADAR = "radar"
     SCATTER = "scatter"
     KDE = "kde"
+    BARS = "bars"
 
 
 class MetricVisualization(BaseModel):
