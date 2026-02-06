@@ -13,17 +13,22 @@ def metric(name: str):
     Decorator to mark a method as a metric exporter.
     Methods decorated with this should return a list of Measure objects.
     """
+
     def decorator(func: Callable):
         func.metric_name = name
         return func
+
     return decorator
 
+
 class PluginFeatureFlags(BaseModel):
-    can_parse_config_from_dataset: bool = Field(False, description="Show the dataset dropdown")
+    can_parse_config_from_dataset: bool = Field(
+        False, description="Show the dataset dropdown"
+    )
     extra: dict = Field({}, description="Additional feature flags")
 
 
-class BaseEvaluationPlugin[T:BaseModel](ABC):
+class BaseEvaluationPlugin[T: BaseModel](ABC):
     """
     Abstract Base Class for evaluation plugins.
     Plugins should inherit from this class and provide a Pydantic model for their configuration.
@@ -32,6 +37,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         class MyPlugin(BaseEvaluationPlugin[MyConfigModel]):
             ...
     """
+
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
     form_ui_schema: dict = {}
     dataset_input_provider: BaseInputProvider | None = None
@@ -46,6 +52,15 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         return PluginFeatureFlags()
 
     @property
+    def display_icon(self) -> str:
+        """
+        Controls the icon displayed in the plugin list.
+        Use a Material Design icon name
+        https://fonts.google.com/icons
+        """
+        return "extension"
+
+    @property
     def config_type(self) -> type[T]:
         """
         Retrieves the Pydantic model type used for plugin configuration.
@@ -54,7 +69,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             if get_origin(base) is BaseEvaluationPlugin:
                 return get_args(base)[0]
         raise TypeError("Could not determine Config type T")
-
 
     def get_metrics(self) -> list[str]:
         """
@@ -75,7 +89,9 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
 
         By default, returns a single visualization (TABLE) with all metrics
         """
-        return [MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())]
+        return [
+            MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())
+        ]
 
     def export_metrics(self, *args, **kwargs) -> list[Measure]:
         """
@@ -88,7 +104,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
                 results.extend(metric_measures)
         return results
 
-
     @abstractmethod
     def evaluate(self, config_data: dict) -> Any:
         """
@@ -98,20 +113,19 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         raise NotImplementedError
 
-
-    def set_dataset_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
+    def set_dataset_input_provider(
+        self, file_content: bytes | None
+    ) -> BaseInputProvider:
         """
         Optional: Initialize and return a specific input provider for the dataset.
         """
         pass
-
 
     def set_model_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
         """
         Optional: Initialize and return a specific input provider for the model.
         """
         pass
-
 
     def get_dataset(self) -> Any:
         """
@@ -121,7 +135,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             raise Exception("Dataset input provider not set")
         return self.dataset_input_provider.get_data()
 
-
     def get_model(self) -> Any:
         """
         Helper to retrieve parsed data from the model input provider.
@@ -130,13 +143,11 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             raise Exception("Model input provider not set")
         return self.model_input_provider.get_data()
 
-
     def get_config_form_schema(self) -> dict:
         """
         Generates a JSON Schema from the Pydantic config model for the frontend UI.
         """
-        return self.config_type.model_json_schema(mode='validation')
-
+        return self.config_type.model_json_schema(mode="validation")
 
     def validate_config_form_data(self, config_form_data: dict) -> T:
         """
@@ -144,13 +155,11 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         return self.config_type.model_validate(config_form_data)
 
-
     def get_config_form_ui_schema(self) -> dict:
         """
         Returns the UI schema for form customization.
         """
         return self.form_ui_schema
-
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
@@ -174,7 +183,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         # Default: Do nothing, just return what came in
         schema, ui_schema = self.get_full_schema()
         return form_data, schema, ui_schema
-
 
     def parse_config_from_dataset(self) -> dict | None:
         """
