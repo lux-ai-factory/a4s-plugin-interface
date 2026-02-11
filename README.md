@@ -27,6 +27,8 @@ uv add git+https://github.com/lux-ai-factory/a4s-plugin-interface
 
 Create your main plugin logic in `src/my_a4s_plugin/plugin.py`. You must implement the BaseEvaluationPlugin class.
 
+BaseEvaluationPlugin expects a Pydantic model as a typed parameter, this model will be used to display a configuration form for your plugin.
+
 #### Important Note on Dependencies
 If your evaluation requires heavy dependencies (like `numpy`, `sklearn`, or `onnxruntime`), **do not import them at the top of the file**. Instead, import them inside the `evaluate` method.
 
