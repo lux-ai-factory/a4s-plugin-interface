@@ -22,6 +22,7 @@ class ChartType(str, enum.Enum):
     SCATTER = "scatter"
     KDE = "kde"
     BARS = "bars"
+    PIE = "pie"
 
 
 class MetricVisualization(BaseModel):
