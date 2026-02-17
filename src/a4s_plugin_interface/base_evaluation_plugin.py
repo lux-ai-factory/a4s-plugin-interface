@@ -1,12 +1,14 @@
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, get_args, get_origin, Callable, Tuple
+from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final
 
 from pydantic import BaseModel, Field
 
+from a4s_plugin_interface.models.task import TaskProgress
 from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
+ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
 
 def metric(name: str):
     """
@@ -37,6 +39,8 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
     form_ui_schema: dict = {}
     dataset_input_provider: BaseInputProvider | None = None
     model_input_provider: BaseInputProvider | None = None
+
+    _progress_callback: ProgressCallback | None = None
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
@@ -110,6 +114,28 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         that will be passed to the metric methods.
         """
         raise NotImplementedError
+
+
+    @final
+    def _set_progress_callback(self, progress_callback: ProgressCallback | None) -> None:
+        """
+        Internal: called by the evaluation runtime (eval module) to feedback progress reporting.
+        Plugin implementations should not call or override this.
+        """
+        if progress_callback is not None and not callable(progress_callback):
+            raise TypeError("Progress sink must be callable or None")
+        self._progress_callback = progress_callback
+
+
+    @final
+    def report_progress(self, task_progress: TaskProgress) -> None:
+        """
+        Public, stable API for plugin authors.
+        No-op if no sink is configured by the evaluation runtime.
+        """
+        if self._progress_callback is None:
+            return
+        self._progress_callback(task_progress)
 
 
     def set_dataset_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
