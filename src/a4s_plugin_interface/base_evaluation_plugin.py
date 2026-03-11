@@ -49,7 +49,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
 
     _progress_callback: ProgressCallback | None = None
 
-    plugin_name = "Base Plugin"
+    plugin_name = None
 
     @classproperty
     def display_name(cls) -> str:
@@ -59,7 +59,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         If the class defines a `plugin_name` attribute, its value is returned.
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
-        return getattr(cls, "plugin_name", cls.__name__)
+        return getattr(cls, "plugin_name", None) or cls.__name__
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
