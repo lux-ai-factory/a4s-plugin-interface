@@ -4,29 +4,35 @@ from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final
 
 from pydantic import BaseModel, Field
 
+from a4s_plugin_interface.utils import classproperty
 from a4s_plugin_interface.models.task import TaskProgress
 from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
 ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
 
+
 def metric(name: str):
     """
     Decorator to mark a method as a metric exporter.
     Methods decorated with this should return a list of Measure objects.
     """
+
     def decorator(func: Callable):
         func.metric_name = name
         return func
+
     return decorator
 
 
 class PluginFeatureFlags(BaseModel):
-    can_parse_config_from_dataset: bool = Field(False, description="Show the dataset dropdown")
+    can_parse_config_from_dataset: bool = Field(
+        False, description="Show the dataset dropdown"
+    )
     extra: dict = Field({}, description="Additional feature flags")
 
 
-class BaseEvaluationPlugin[T:BaseModel](ABC):
+class BaseEvaluationPlugin[T: BaseModel](ABC):
     """
     Abstract Base Class for evaluation plugins.
     Plugins should inherit from this class and provide a Pydantic model for their configuration.
@@ -35,12 +41,25 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         class MyPlugin(BaseEvaluationPlugin[MyConfigModel]):
             ...
     """
+
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
     form_ui_schema: dict = {}
     dataset_input_provider: BaseInputProvider | None = None
     model_input_provider: BaseInputProvider | None = None
 
     _progress_callback: ProgressCallback | None = None
+
+    plugin_name = "Base Plugin"
+
+    @classproperty
+    def display_name(cls) -> str:
+        """
+        Returns a display name for the plugin.
+
+        If the class defines a `plugin_name` attribute, its value is returned.
+        If not, the class's name (`cls.__name__`) is used as a fallback.
+        """
+        return getattr(cls, "plugin_name", cls.__name__)
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
@@ -49,7 +68,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         Override this property in your subclass to change defaults.
         """
         return PluginFeatureFlags()
-
 
     @property
     def display_icon(self) -> str:
@@ -60,7 +78,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         return "extension"
 
-
     @property
     def config_type(self) -> type[T]:
         """
@@ -70,7 +87,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             if get_origin(base) is BaseEvaluationPlugin:
                 return get_args(base)[0]
         raise TypeError("Could not determine Config type T")
-
 
     def get_metrics(self) -> list[str]:
         """
@@ -91,8 +107,9 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
 
         By default, returns a single visualization (TABLE) with all metrics
         """
-        return [MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())]
-
+        return [
+            MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())
+        ]
 
     def export_metrics(self, *args, **kwargs) -> list[Measure]:
         """
@@ -105,7 +122,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
                 results.extend(metric_measures)
         return results
 
-
     @abstractmethod
     def evaluate(self, config_data: dict) -> Any:
         """
@@ -115,9 +131,10 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         raise NotImplementedError
 
-
     @final
-    def _set_progress_callback(self, progress_callback: ProgressCallback | None) -> None:
+    def _set_progress_callback(
+        self, progress_callback: ProgressCallback | None
+    ) -> None:
         """
         Internal: called by the evaluation runtime (eval module) to feedback progress reporting.
         Plugin implementations should not call or override this.
@@ -125,7 +142,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         if progress_callback is not None and not callable(progress_callback):
             raise TypeError("Progress sink must be callable or None")
         self._progress_callback = progress_callback
-
 
     @final
     def report_progress(self, task_progress: TaskProgress) -> None:
@@ -137,20 +153,19 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             return
         self._progress_callback(task_progress)
 
-
-    def set_dataset_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
+    def set_dataset_input_provider(
+        self, file_content: bytes | None
+    ) -> BaseInputProvider:
         """
         Optional: Initialize and return a specific input provider for the dataset.
         """
         pass
-
 
     def set_model_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
         """
         Optional: Initialize and return a specific input provider for the model.
         """
         pass
-
 
     def get_dataset(self) -> Any:
         """
@@ -160,7 +175,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             raise Exception("Dataset input provider not set")
         return self.dataset_input_provider.get_data()
 
-
     def get_model(self) -> Any:
         """
         Helper to retrieve parsed data from the model input provider.
@@ -169,13 +183,11 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             raise Exception("Model input provider not set")
         return self.model_input_provider.get_data()
 
-
     def get_config_form_schema(self) -> dict:
         """
         Generates a JSON Schema from the Pydantic config model for the frontend UI.
         """
-        return self.config_type.model_json_schema(mode='validation')
-
+        return self.config_type.model_json_schema(mode="validation")
 
     def validate_config_form_data(self, config_form_data: dict) -> T:
         """
@@ -183,25 +195,24 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         return self.config_type.model_validate(config_form_data)
 
-
     def get_config_form_ui_schema(self) -> dict:
         """
         Returns the UI schema for form customization.
         """
         return self.form_ui_schema
 
-
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
-        Optional: Converts the validated Pydantic model used for the UI form into a dict for internal use
-        This can be overridden to add/change the structure of the input config data for use in the evaluate method
+        Optional: Converts the validated Pydantic model used for the UI form
+                  into a dict for internal use
+        This can be overridden to add/change the structure of the input config data
+        for use in the evaluate method
         """
         return form_schema.model_dump()
 
     def get_full_schema(self) -> Tuple[dict, dict]:
         """Helper to get the fresh, static baseline."""
         return self.get_config_form_schema(), self.get_config_form_ui_schema()
-
 
     # form_data passed here may be incomplete, so we don't validate and use MyConfigModel
     # It is the developer's responsibility to check for and use data accordingly here
@@ -214,7 +225,6 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         # Default: Do nothing, just return what came in
         schema, ui_schema = self.get_full_schema()
         return form_data, schema, ui_schema
-
 
     def parse_config_from_dataset(self) -> dict | None:
         """
