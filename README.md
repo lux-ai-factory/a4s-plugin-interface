@@ -1,6 +1,6 @@
 # A4S Plugin Interface
 
-This repository provides the base interface for writing evaluation plugins for A4S.
+This repository provides the base interface for writing evaluation plugins.
 
 If you are new to the platform, start here:
 
@@ -8,12 +8,11 @@ If you are new to the platform, start here:
 
 That guide covers:
 
-- how A4S is structured
-- how plugin discovery works
+- the plugin contract and discovery model
 - how to create a plugin project
 - how to implement configuration, inputs, metrics, and progress reporting
-- how to run the full platform locally
-- how to debug common plugin failures
+- optional integration hooks and current extension points
+- common failure modes and architectural feedback areas
 
 ## Quick Start
 
