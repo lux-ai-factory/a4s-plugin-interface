@@ -23,6 +23,7 @@ class ChartType(str, enum.Enum):
     KDE = "kde"
     BARS = "bars"
     PIE = "pie"
+    CSV = "csv"
 
 
 class MetricVisualization(BaseModel):
