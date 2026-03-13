@@ -6,11 +6,11 @@ This guide is for developers who want to create a new evaluation plugin for the 
 
 A4S is split into several repositories that work together:
 
-- `a4s-backend`: Django API, project management, plugin configuration storage, evaluation orchestration, result storage.
-- `a4s-eval`: asynchronous worker that executes plugin code and posts measurements back to the backend.
-- `a4s-webapp`: browser UI used to enable plugins, configure them, start evaluations, and inspect results.
-- `a4s-plugin-interface`: the Python contract you implement when writing a plugin.
-- `a4s-plugin-manager`: plugin discovery and loading logic.
+- **`a4s-backend`**: A4S Backend is the central server-side application for the A4S platform. It is implemented in Django and exposes application programming interfaces and administrative functions for managing projects, datasets, models, plugin configurations, evaluation records, tasks, and measurement results. It also handles plugin discovery for configuration purposes and coordinates the interaction between the frontend application and the evaluation runtime.
+- **`a4s-eval`**: A4S Eval is the execution runtime for A4S evaluation plugins. It runs asynchronous evaluation jobs, loads the selected plugin implementation, retrieves the required dataset and model artifacts, executes the evaluation logic, reports progress, and posts the resulting measurements back to the backend. It is designed to host heavier evaluation dependencies and computation that should be isolated from the main web API.
+- **`a4s-webapp`**: A4S Webapp is the browser-based user interface for the A4S platform. It is implemented as a React application and provides screens for navigating projects, configuring plugins, starting evaluation runs, viewing task status, and inspecting evaluation measurements and results. It serves as the main interaction layer for end users of the platform.
+- **`a4s-plugin-interface`**: A4S Plugin Interface is the developer-facing contract for building A4S evaluation plugins. It defines the base plugin class, configuration schema conventions, metric export mechanisms, progress reporting interface, and related data models needed for interoperability with the rest of the platform. It allows external or internal developers to implement new evaluation methods in a standardized way.
+- **`a4s-plugin-manager`**: A4S Plugin Manager is the plugin discovery and loading layer used by the A4S system. It scans configured plugin directories, imports plugin packages, identifies classes implementing the A4S plugin interface, and makes them available to the backend and evaluation runtime. It supports dynamic loading of locally developed plugins and runtime refresh during development.
 
 As a plugin developer, the most important point is this:
 
