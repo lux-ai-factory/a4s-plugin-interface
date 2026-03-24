@@ -41,7 +41,7 @@ Evaluation dependencies will also need to be installed in the `a4s-eval` environ
 from typing import Any
 
 from a4s_plugin_interface.models.measure import Measure
-from a4s_plugin_interface.base_evaluation_plugin import metric, BaseEvaluationPlugin, metric
+from a4s_plugin_interface.base_evaluation_plugin import metric, BaseEvaluationPlugin
 from pydantic import BaseModel, Field
 
 # Define the configuration form schema
@@ -58,6 +58,9 @@ class MyPlugin(BaseEvaluationPlugin[ConfigFormSchema]):
         threshold: float = config.threshold
         
         # Your evaluation logic here
+
+        # Use self.logger for logging
+        self.logger.info("Evaluation completed successfully")
         
         return {"MyMetric": [0.99, 0.5, 0.67], "OtherMetric": [0.01, 0.22, 0.77]}
 
