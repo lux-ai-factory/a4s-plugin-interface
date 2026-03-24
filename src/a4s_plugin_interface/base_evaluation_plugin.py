@@ -1,4 +1,5 @@
 import inspect
+import logging
 from abc import ABC, abstractmethod
 from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final
 
@@ -49,6 +50,8 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
 
     _progress_callback: ProgressCallback | None = None
 
+    _logger = None
+
     plugin_name = None
 
     @classproperty
@@ -60,6 +63,19 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
         return getattr(cls, "plugin_name", None) or cls.__name__
+
+    @property
+    def logger(self):
+        """
+        Returns the cached logger for this plugin class.
+
+        The logger is shared across all instances of the class (per-class caching)
+        and named as "<module> - <display_name>".
+        """
+        cls = self.__class__
+        if cls._logger is None:
+            cls._logger = logging.getLogger(f"{cls.__module__} - {cls.display_name}")
+        return cls._logger
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
