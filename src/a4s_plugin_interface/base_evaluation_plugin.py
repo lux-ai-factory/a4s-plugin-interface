@@ -1,24 +1,15 @@
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final
+from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final, Type
 
 from pydantic import BaseModel, Field
 
+from a4s_plugin_interface.decorators.evaluation_input import InputDefinition
 from a4s_plugin_interface.models.task import TaskProgress
 from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
 ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
-
-def metric(name: str):
-    """
-    Decorator to mark a method as a metric exporter.
-    Methods decorated with this should return a list of Measure objects.
-    """
-    def decorator(func: Callable):
-        func.metric_name = name
-        return func
-    return decorator
 
 
 class PluginFeatureFlags(BaseModel):
@@ -36,11 +27,15 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             ...
     """
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
-    form_ui_schema: dict = {}
-    dataset_input_provider: BaseInputProvider | None = None
-    model_input_provider: BaseInputProvider | None = None
+    _form_ui_schema: dict = {}
 
-    _progress_callback: ProgressCallback | None = None
+    _input_definitions: list[InputDefinition] = []
+    _input_provider_types: dict[str, Type[BaseInputProvider]] = {}
+
+    def __init__(self):
+        self._input_provider_instances: dict[str, BaseInputProvider] = {}
+        self._progress_callback: ProgressCallback | None = None
+
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
@@ -49,6 +44,15 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         Override this property in your subclass to change defaults.
         """
         return PluginFeatureFlags()
+
+
+    @property
+    def input_definitions(self) -> list[InputDefinition]:
+        """
+
+        Controls the evaluation input form at evaluation creation
+        """
+        return self._input_definitions
 
 
     @property
@@ -138,36 +142,23 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         self._progress_callback(task_progress)
 
 
-    def set_dataset_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
+    def set_input_content(self, name: str, file_content: bytes | None) -> None:
         """
-        Optional: Initialize and return a specific input provider for the dataset.
+        Called by the runtime. Instantiates the provider mapped via @input.
         """
-        pass
+        provider_cls = self._input_provider_types.get(name)
+        if provider_cls and file_content is not None:
+            self._input_provider_instances[name] = provider_cls(file_content)
 
 
-    def set_model_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
+    def get_input_data(self, name: str) -> Any:
         """
-        Optional: Initialize and return a specific input provider for the model.
+        Get data from InputProvider using name set in evaluation_input decorator
         """
-        pass
-
-
-    def get_dataset(self) -> Any:
-        """
-        Helper to retrieve parsed data from the dataset input provider.
-        """
-        if self.dataset_input_provider is None:
-            raise Exception("Dataset input provider not set")
-        return self.dataset_input_provider.get_data()
-
-
-    def get_model(self) -> Any:
-        """
-        Helper to retrieve parsed data from the model input provider.
-        """
-        if self.model_input_provider is None:
-            raise Exception("Model input provider not set")
-        return self.model_input_provider.get_data()
+        provider = self._input_provider_instances.get(name)
+        if provider is None:
+            raise KeyError(f"Input '{name}' not found or content not provided.")
+        return provider.get_data()
 
 
     def get_config_form_schema(self) -> dict:
@@ -188,7 +179,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         Returns the UI schema for form customization.
         """
-        return self.form_ui_schema
+        return self._form_ui_schema
 
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
