@@ -207,8 +207,9 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         return form_data, schema, ui_schema
 
 
-    def parse_config_from_dataset(self) -> dict | None:
+    def parse_config_from_dataset(self, file_content: bytes) -> dict | None:
         """
         Optional: Try to parse a valid config from the dataset.
+        Use a InputProvider to read the file contents
         """
         return None
