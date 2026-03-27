@@ -1,12 +1,14 @@
 import inspect
 from abc import ABC, abstractmethod
-from typing import Any, get_args, get_origin, Callable
+from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final
 
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 
+from a4s_plugin_interface.models.task import TaskProgress
 from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
-from a4s_plugin_interface.models.measure import Measure
+from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
+ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
 
 def metric(name: str):
     """
@@ -17,6 +19,11 @@ def metric(name: str):
         func.metric_name = name
         return func
     return decorator
+
+
+class PluginFeatureFlags(BaseModel):
+    can_parse_config_from_dataset: bool = Field(False, description="Show the dataset dropdown")
+    extra: dict = Field({}, description="Additional feature flags")
 
 
 class BaseEvaluationPlugin[T:BaseModel](ABC):
@@ -32,6 +39,26 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
     form_ui_schema: dict = {}
     dataset_input_provider: BaseInputProvider | None = None
     model_input_provider: BaseInputProvider | None = None
+
+    _progress_callback: ProgressCallback | None = None
+
+    @property
+    def feature_flags(self) -> PluginFeatureFlags:
+        """
+        Controls UI behavior on the frontend.
+        Override this property in your subclass to change defaults.
+        """
+        return PluginFeatureFlags()
+
+
+    @property
+    def display_icon(self) -> str:
+        """
+        Controls the icon displayed in the plugin list.
+        Use a Material Design icon name
+        https://fonts.google.com/icons
+        """
+        return "extension"
 
 
     @property
@@ -55,6 +82,17 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
                 metrics.append(method.metric_name)
         return metrics
 
+    def get_metric_visualizations(self, config_data: dict) -> list[MetricVisualization]:
+        """
+        Returns a list of MetricVisualization objects to render a list of
+        visualizations on the front end and the metrics to display for each
+
+        The config_data could be used to define specific visualizations from the config
+
+        By default, returns a single visualization (TABLE) with all metrics
+        """
+        return [MetricVisualization(chart_type=ChartType.TABLE, metrics=self.get_metrics())]
+
 
     def export_metrics(self, *args, **kwargs) -> list[Measure]:
         """
@@ -76,6 +114,28 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         that will be passed to the metric methods.
         """
         raise NotImplementedError
+
+
+    @final
+    def _set_progress_callback(self, progress_callback: ProgressCallback | None) -> None:
+        """
+        Internal: called by the evaluation runtime (eval module) to feedback progress reporting.
+        Plugin implementations should not call or override this.
+        """
+        if progress_callback is not None and not callable(progress_callback):
+            raise TypeError("Progress sink must be callable or None")
+        self._progress_callback = progress_callback
+
+
+    @final
+    def report_progress(self, task_progress: TaskProgress) -> None:
+        """
+        Public, stable API for plugin authors.
+        No-op if no sink is configured by the evaluation runtime.
+        """
+        if self._progress_callback is None:
+            return
+        self._progress_callback(task_progress)
 
 
     def set_dataset_input_provider(self, file_content: bytes | None) -> BaseInputProvider:
@@ -114,7 +174,7 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         """
         Generates a JSON Schema from the Pydantic config model for the frontend UI.
         """
-        return self.config_type.model_json_schema()
+        return self.config_type.model_json_schema(mode='validation')
 
 
     def validate_config_form_data(self, config_form_data: dict) -> T:
@@ -137,3 +197,27 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
         This can be overridden to add/change the structure of the input config data for use in the evaluate method
         """
         return form_schema.model_dump()
+
+    def get_full_schema(self) -> Tuple[dict, dict]:
+        """Helper to get the fresh, static baseline."""
+        return self.get_config_form_schema(), self.get_config_form_ui_schema()
+
+
+    # form_data passed here may be incomplete, so we don't validate and use MyConfigModel
+    # It is the developer's responsibility to check for and use data accordingly here
+    def on_config_change(self, form_data: T | None) -> Tuple[T | None, dict, dict]:
+        """
+        Hook called whenever the user changes a form value.
+        Allows the plugin to dynamically update the schema (e.g. drop downs),
+        the data (e.g. auto-fill), or the UI (e.g. hide fields).
+        """
+        # Default: Do nothing, just return what came in
+        schema, ui_schema = self.get_full_schema()
+        return form_data, schema, ui_schema
+
+
+    def parse_config_from_dataset(self) -> dict | None:
+        """
+        Optional: Try to parse a valid config from the dataset.
+        """
+        return None
