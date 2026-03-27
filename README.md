@@ -32,6 +32,8 @@ Minimal example:
 ```python
 from typing import Any
 
+from a4s_plugin_interface.models.measure import Measure
+from a4s_plugin_interface.base_evaluation_plugin import metric, BaseEvaluationPlugin
 from pydantic import BaseModel, Field
 
 from a4s_plugin_interface import BaseEvaluationPlugin, Measure, metric
@@ -43,8 +45,20 @@ class ConfigFormSchema(BaseModel):
 
 class MyPlugin(BaseEvaluationPlugin[ConfigFormSchema]):
     def evaluate(self, config_data: dict) -> Any:
-        config = self.validate_config_form_data(config_data)
-        return {"MyMetric": [config.threshold]}
+        # Dependencies only used during evaluation should be imported locally here
+        import numpy as np
+
+        # Access configuration form data
+        config: ConfigFormSchema = self.validate_config_form_data(config_data)
+        threshold: float = config.threshold
+        
+        # Your evaluation logic here
+
+        # Use self.logger for logging
+        self.logger.info("Evaluation completed successfully")
+        
+        return {"MyMetric": [0.99, 0.5, 0.67], "OtherMetric": [0.01, 0.22, 0.77]}
+
 
     @metric("MyMetric")
     def my_metric(self, evaluation_output: Any) -> list[Measure]:
