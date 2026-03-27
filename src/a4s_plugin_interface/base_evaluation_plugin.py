@@ -151,13 +151,13 @@ class BaseEvaluationPlugin[T:BaseModel](ABC):
             self._input_provider_instances[name] = provider_cls(file_content)
 
 
-    def get_input_data(self, name: str) -> Any:
+    def get_input_data(self, name: str) -> Any | None:
         """
         Get data from InputProvider using name set in evaluation_input decorator
         """
         provider = self._input_provider_instances.get(name)
         if provider is None:
-            raise KeyError(f"Input '{name}' not found or content not provided.")
+            return None
         return provider.get_data()
 
 
