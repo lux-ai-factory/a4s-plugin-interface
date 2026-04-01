@@ -12,6 +12,7 @@ from a4s_plugin_interface.input_providers.base_input_provider import BaseInputPr
 from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
 ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
+ArtifactCallback: TypeAlias = Callable[[str, bytes], None]
 
 
 class PluginFeatureFlags(BaseModel):
@@ -34,17 +35,19 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
     _form_ui_schema: dict = {}
 
+    _plugin_name = None
+
     _input_definitions: list[InputDefinition] = []
     _input_provider_types: dict[str, Type[BaseInputProvider]] = {}
 
     def __init__(self):
         self._input_provider_instances: dict[str, BaseInputProvider] = {}
         self._progress_callback: ProgressCallback | None = None
+        self._artifact_callback: ArtifactCallback | None = None
+        self._logger = None
 
 
-    _logger = None
 
-    plugin_name = None
 
     @classproperty
     def display_name(cls) -> str:
@@ -54,7 +57,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         If the class defines a `plugin_name` attribute, its value is returned.
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
-        return getattr(cls, "plugin_name", None) or cls.__name__
+        return getattr(cls, "_plugin_name", None) or cls.__name__
 
     @property
     def logger(self):
@@ -170,6 +173,21 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         if self._progress_callback is None:
             return
         self._progress_callback(task_progress)
+
+    @final
+    def _set_artifact_callback(self, artifact_callback: ArtifactCallback | None) -> None:
+        """Internal: called by the evaluation runtime to hook into artifact uploading."""
+        self._artifact_callback = artifact_callback
+
+    @final
+    def upload_artifact(self, name: str, content: bytes) -> None:
+        """
+        Public API for plugin authors to upload arbitrary files.
+        """
+        if self._artifact_callback:
+            self._artifact_callback(name, content)
+        else:
+            self.logger.warning(f"Artifact callback not configured. Dropping artifact: {name}")
 
     def set_input_content(
         self, name: str, file_content: bytes | None) -> None:
