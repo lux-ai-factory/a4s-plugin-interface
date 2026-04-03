@@ -33,9 +33,9 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
     """
 
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
-    _form_ui_schema: dict = {}
+    form_ui_schema: dict = {}
 
-    _plugin_name = None
+    plugin_name = None
 
     _input_definitions: list[InputDefinition] = []
     _input_provider_types: dict[str, Type[BaseInputProvider]] = {}
@@ -46,9 +46,6 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         self._artifact_callback: ArtifactCallback | None = None
         self._logger = None
 
-
-
-
     @classproperty
     def display_name(cls) -> str:
         """
@@ -57,7 +54,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         If the class defines a `plugin_name` attribute, its value is returned.
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
-        return getattr(cls, "_plugin_name", None) or cls.__name__
+        return getattr(cls, "plugin_name", None) or cls.__name__
 
     @property
     def logger(self):
@@ -80,7 +77,6 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         """
         return PluginFeatureFlags()
 
-
     @property
     def input_definitions(self) -> list[InputDefinition]:
         """
@@ -88,7 +84,6 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Controls the evaluation input form at evaluation creation
         """
         return self._input_definitions
-
 
     @property
     def display_icon(self) -> str:
@@ -175,7 +170,9 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         self._progress_callback(task_progress)
 
     @final
-    def _set_artifact_callback(self, artifact_callback: ArtifactCallback | None) -> None:
+    def _set_artifact_callback(
+        self, artifact_callback: ArtifactCallback | None
+    ) -> None:
         """Internal: called by the evaluation runtime to hook into artifact uploading."""
         self._artifact_callback = artifact_callback
 
@@ -187,10 +184,11 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         if self._artifact_callback:
             self._artifact_callback(name, content)
         else:
-            self.logger.warning(f"Artifact callback not configured. Dropping artifact: {name}")
+            self.logger.warning(
+                f"Artifact callback not configured. Dropping artifact: {name}"
+            )
 
-    def set_input_content(
-        self, name: str, file_content: bytes | None) -> None:
+    def set_input_content(self, name: str, file_content: bytes | None) -> None:
         """
         Called by the runtime. Instantiates the provider mapped via @input.
         """
@@ -223,7 +221,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         """
         Returns the UI schema for form customization.
         """
-        return self._form_ui_schema
+        return self.form_ui_schema
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
