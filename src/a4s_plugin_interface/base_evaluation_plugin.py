@@ -1,7 +1,17 @@
 import inspect
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final, Type
+from typing import (
+    Any,
+    get_args,
+    get_origin,
+    Callable,
+    Tuple,
+    TypeAlias,
+    final,
+    Type,
+    Self,
+)
 
 from pydantic import BaseModel, Field
 
@@ -47,7 +57,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         self._logger = None
 
     @classproperty
-    def display_name(cls) -> str:
+    def display_name(cls: type[Self]) -> str:
         """
         Returns a display name for the plugin.
 
