@@ -72,12 +72,12 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Returns the cached logger for this plugin class.
 
         The logger is shared across all instances of the class (per-class caching)
-        and named as "<module> - <display_name>".
+        and named as "<module> - __name__".
         """
         cls = self.__class__
-        if cls._logger is None:
-            cls._logger = logging.getLogger(f"{cls.__module__} - {cls.display_name}")
-        return cls._logger
+        if self._logger is None:
+            self._logger = logging.getLogger(f"{cls.__module__} - {cls.__name__}")
+        return self._logger
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
