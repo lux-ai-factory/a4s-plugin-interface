@@ -45,7 +45,12 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
     form_ui_schema: dict = {}
 
-    plugin_name = None
+    # The plugin name that will be displayed in the UI
+    plugin_name: str | None = None
+
+    # Controls the icon displayed in the plugin list.
+    # Use a Material Design icon name https://fonts.google.com/icons
+    ui_icon: str | None = None
 
     _input_definitions: list[InputDefinition] = []
     _input_provider_types: dict[str, Type[BaseInputProvider]] = {}
@@ -64,7 +69,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         If the class defines a `plugin_name` attribute, its value is returned.
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
-        return getattr(cls, "plugin_name", None) or cls.__name__
+        return cls.plugin_name or cls.__name__
 
     @property
     def logger(self):
@@ -74,8 +79,8 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         The logger is shared across all instances of the class (per-class caching)
         and named as "<module> - __name__".
         """
-        cls = self.__class__
         if self._logger is None:
+            cls = self.__class__
             self._logger = logging.getLogger(f"{cls.__module__} - {cls.__name__}")
         return self._logger
 
@@ -90,7 +95,6 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
     @property
     def input_definitions(self) -> list[InputDefinition]:
         """
-
         Controls the evaluation input form at evaluation creation
         """
         return self._input_definitions
@@ -101,8 +105,10 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Controls the icon displayed in the plugin list.
         Use a Material Design icon name
         https://fonts.google.com/icons
+
+        For a new plugin, either redefine this property, or set the class attribute `ui_icon`
         """
-        return "extension"
+        return self.ui_icon or "extension"
 
     @property
     def config_type(self) -> type[T]:
