@@ -1,4 +1,8 @@
-from a4s_plugin_interface.base_evaluation_plugin import BaseEvaluationPlugin, PluginFeatureFlags
+from a4s_plugin_interface.base_evaluation_plugin import (
+    BaseEvaluationPlugin,
+    PluginFeatureFlags,
+)
+from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 from a4s_plugin_interface.decorators.metric import metric
 from a4s_plugin_interface.decorators.evaluation_input import evaluation_input
 from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
@@ -8,6 +12,7 @@ from a4s_plugin_interface.models.task import TaskProgress
 __all__ = [
     "BaseEvaluationPlugin",
     "PluginFeatureFlags",
+    "BaseInputProvider",
     "metric",
     "evaluation_input",
     "Measure",
@@ -15,5 +20,5 @@ __all__ = [
     "ChartType",
     "InputDefinition",
     "InputType",
-    "TaskProgress"
+    "TaskProgress",
 ]
