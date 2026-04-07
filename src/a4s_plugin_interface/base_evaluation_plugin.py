@@ -61,6 +61,10 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         self._artifact_callback: ArtifactCallback | None = None
         self._logger = None
 
+    @classmethod
+    def is_direct_subclass(cls: type[Self]) -> bool:
+        return BaseEvaluationPlugin in cls.__bases__
+
     @classproperty
     def display_name(cls: type[Self]) -> str:
         """
@@ -69,7 +73,24 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         If the class defines a `plugin_name` attribute, its value is returned.
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
-        return cls.plugin_name or cls.__name__
+        # NOTE: use cls.plugin_name only if cls is direct subclass of BaseEvaluationPlugin
+        plugin_name = cls.plugin_name
+        default = cls.__name__
+
+        if cls.is_direct_subclass():
+            # cls is a direct subclass of BaseInputProvider
+            return plugin_name or default
+        else:
+            if plugin_name is None:
+                return default
+            # avoid using the plugin name that was set for the parent plugin
+            for base in cls.__bases__:
+                if (
+                    issubclass(base, BaseEvaluationPlugin)
+                    and plugin_name == base.plugin_name
+                ):
+                    return default
+            return plugin_name
 
     @property
     def logger(self):
