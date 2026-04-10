@@ -88,7 +88,7 @@ cd /absolute/path/to/plugins
 mkdir my-evaluation-plugin
 cd my-evaluation-plugin
 uv init --lib
-uv add git+https://github.com/lux-ai-factory/a4s-plugin-interface
+uv add git+https://github.com/lux-ai-factory/vera-plugin-interface
 ```
 
 Recommended structure:
@@ -136,8 +136,8 @@ from typing import Any
 
 from pydantic import BaseModel, Field
 
-from a4s_plugin_interface import BaseEvaluationPlugin, Measure, TaskProgress, metric
-from a4s_plugin_interface.input_providers.csv_input_provider import CsvInputProvider
+from vera_plugin_interface import BaseEvaluationPlugin, Measure, TaskProgress, metric
+from vera_plugin_interface.input_providers.csv_input_provider import CsvInputProvider
 
 
 class ConfigSchema(BaseModel):
@@ -274,7 +274,7 @@ def set_dataset_input_provider(self, file_content: bytes | None):
 If you need another format, create a subclass of `BaseInputProvider`.
 
 ```python
-from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
+from vera_plugin_interface.input_providers.base_input_provider import BaseInputProvider
 
 
 class JsonInputProvider(BaseInputProvider):
