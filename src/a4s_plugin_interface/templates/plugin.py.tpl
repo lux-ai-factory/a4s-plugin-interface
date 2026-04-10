@@ -2,8 +2,7 @@ from typing import Any
 
 from pydantic import BaseModel
 
-from a4s_plugin_interface.models.measure import Measure
-from a4s_plugin_interface.base_evaluation_plugin import BaseEvaluationPlugin, metric
+from a4s_plugin_interface import BaseEvaluationPlugin, Measure, metric
 
 
 # Define the configuration form schema
