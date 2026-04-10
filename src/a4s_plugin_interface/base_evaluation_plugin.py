@@ -1,7 +1,18 @@
+import copy
 import inspect
 import logging
 from abc import ABC, abstractmethod
-from typing import Any, get_args, get_origin, Callable, Tuple, TypeAlias, final, Type
+from typing import (
+    Any,
+    get_args,
+    get_origin,
+    Callable,
+    Tuple,
+    TypeAlias,
+    final,
+    Type,
+    Self,
+)
 
 from pydantic import BaseModel, Field
 
@@ -12,6 +23,7 @@ from a4s_plugin_interface.input_providers.base_input_provider import BaseInputPr
 from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
 ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
+ArtifactCallback: TypeAlias = Callable[[str, bytes], None]
 
 
 class PluginFeatureFlags(BaseModel):
@@ -32,7 +44,14 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
     """
 
     # UI Schema for RJSF (react-jsonschema-form) to customize form appearance
-    _form_ui_schema: dict = {}
+    form_ui_schema: dict = {}
+
+    # The plugin name that will be displayed in the UI
+    plugin_name: str | None = None
+
+    # Controls the icon displayed in the plugin list.
+    # Use a Material Design icon name https://fonts.google.com/icons
+    ui_icon: str | None = None
 
     _input_definitions: list[InputDefinition] = []
     _input_provider_types: dict[str, Type[BaseInputProvider]] = {}
@@ -40,21 +59,39 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
     def __init__(self):
         self._input_provider_instances: dict[str, BaseInputProvider] = {}
         self._progress_callback: ProgressCallback | None = None
+        self._artifact_callback: ArtifactCallback | None = None
+        self._logger = None
 
-
-    _logger = None
-
-    plugin_name = None
+    @classmethod
+    def is_direct_subclass(cls: type[Self]) -> bool:
+        return BaseEvaluationPlugin in cls.__bases__
 
     @classproperty
-    def display_name(cls) -> str:
+    def display_name(cls: type[Self]) -> str:
         """
         Returns a display name for the plugin.
 
         If the class defines a `plugin_name` attribute, its value is returned.
         If not, the class's name (`cls.__name__`) is used as a fallback.
         """
-        return getattr(cls, "plugin_name", None) or cls.__name__
+        # NOTE: use cls.plugin_name only if cls is direct subclass of BaseEvaluationPlugin
+        plugin_name = cls.plugin_name
+        default = cls.__name__
+
+        if cls.is_direct_subclass():
+            # cls is a direct subclass of BaseInputProvider
+            return plugin_name or default
+        else:
+            if plugin_name is None:
+                return default
+            # avoid using the plugin name that was set for the parent plugin
+            for base in cls.__bases__:
+                if (
+                    issubclass(base, BaseEvaluationPlugin)
+                    and plugin_name == base.plugin_name
+                ):
+                    return default
+            return plugin_name
 
     @property
     def logger(self):
@@ -62,12 +99,12 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Returns the cached logger for this plugin class.
 
         The logger is shared across all instances of the class (per-class caching)
-        and named as "<module> - <display_name>".
+        and named as "<module> - __name__".
         """
-        cls = self.__class__
-        if cls._logger is None:
-            cls._logger = logging.getLogger(f"{cls.__module__} - {cls.display_name}")
-        return cls._logger
+        if self._logger is None:
+            cls = self.__class__
+            self._logger = logging.getLogger(f"{cls.__module__} - {cls.__name__}")
+        return self._logger
 
     @property
     def feature_flags(self) -> PluginFeatureFlags:
@@ -77,15 +114,12 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         """
         return PluginFeatureFlags()
 
-
     @property
     def input_definitions(self) -> list[InputDefinition]:
         """
-
         Controls the evaluation input form at evaluation creation
         """
         return self._input_definitions
-
 
     @property
     def display_icon(self) -> str:
@@ -93,8 +127,10 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Controls the icon displayed in the plugin list.
         Use a Material Design icon name
         https://fonts.google.com/icons
+
+        For a new plugin, either redefine this property, or set the class attribute `ui_icon`
         """
-        return "extension"
+        return self.ui_icon or "extension"
 
     @property
     def config_type(self) -> type[T]:
@@ -171,8 +207,26 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
             return
         self._progress_callback(task_progress)
 
-    def set_input_content(
-        self, name: str, file_content: bytes | None) -> None:
+    @final
+    def _set_artifact_callback(
+        self, artifact_callback: ArtifactCallback | None
+    ) -> None:
+        """Internal: called by the evaluation runtime to hook into artifact uploading."""
+        self._artifact_callback = artifact_callback
+
+    @final
+    def upload_artifact(self, name: str, content: bytes) -> None:
+        """
+        Public API for plugin authors to upload arbitrary files.
+        """
+        if self._artifact_callback:
+            self._artifact_callback(name, content)
+        else:
+            self.logger.warning(
+                f"Artifact callback not configured. Dropping artifact: {name}"
+            )
+
+    def set_input_content(self, name: str, file_content: bytes | None) -> None:
         """
         Called by the runtime. Instantiates the provider mapped via @input.
         """
@@ -203,9 +257,9 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
 
     def get_config_form_ui_schema(self) -> dict:
         """
-        Returns the UI schema for form customization.
+        Returns a deep copy of the UI schema for form customization.
         """
-        return self._form_ui_schema
+        return copy.deepcopy(self._form_ui_schema)
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
