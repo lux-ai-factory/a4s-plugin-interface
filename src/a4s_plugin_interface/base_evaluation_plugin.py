@@ -1,3 +1,4 @@
+import copy
 import inspect
 import logging
 from abc import ABC, abstractmethod
@@ -221,9 +222,9 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
 
     def get_config_form_ui_schema(self) -> dict:
         """
-        Returns the UI schema for form customization.
+        Returns a deep copy of the UI schema for form customization.
         """
-        return self._form_ui_schema
+        return copy.deepcopy(self._form_ui_schema)
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
