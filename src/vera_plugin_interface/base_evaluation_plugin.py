@@ -259,7 +259,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         """
         Returns a deep copy of the UI schema for form customization.
         """
-        return copy.deepcopy(self._form_ui_schema)
+        return copy.deepcopy(self.form_ui_schema)
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
