@@ -16,11 +16,11 @@ from typing import (
 
 from pydantic import BaseModel, Field
 
-from a4s_plugin_interface.decorators.evaluation_input import InputDefinition
-from a4s_plugin_interface.utils import classproperty
-from a4s_plugin_interface.models.task import TaskProgress
-from a4s_plugin_interface.input_providers.base_input_provider import BaseInputProvider
-from a4s_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
+from vera_plugin_interface.decorators.evaluation_input import InputDefinition
+from vera_plugin_interface.utils import classproperty
+from vera_plugin_interface.models.task import TaskProgress
+from vera_plugin_interface.input_providers.base_input_provider import BaseInputProvider
+from vera_plugin_interface.models.measure import Measure, MetricVisualization, ChartType
 
 ProgressCallback: TypeAlias = Callable[[TaskProgress], None]
 ArtifactCallback: TypeAlias = Callable[[str, bytes], None]
@@ -259,7 +259,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         """
         Returns a deep copy of the UI schema for form customization.
         """
-        return copy.deepcopy(self._form_ui_schema)
+        return copy.deepcopy(self.form_ui_schema)
 
     def form_schema_to_internal(self, form_schema: T) -> dict:
         """
