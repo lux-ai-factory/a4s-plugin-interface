@@ -2,6 +2,7 @@ import copy
 import inspect
 import logging
 from abc import ABC, abstractmethod
+from collections.abc import Iterable, Sized
 from typing import (
     Any,
     get_args,
@@ -9,6 +10,8 @@ from typing import (
     Callable,
     Tuple,
     TypeAlias,
+    TypeVar,
+    Generic,
     final,
     Type,
     Self,
@@ -208,6 +211,41 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         self._progress_callback(task_progress)
 
     @final
+    def progress_bar(
+        self,
+        iterable,
+        *,
+        total: int | None = None,
+        desc: str | None = None,
+        start: int = 0,
+        with_index: bool = False,
+        extra: dict | None = None,
+    ) -> "ProgressBar":
+        """
+        Wrap an iterable to yield items (optionally with index)
+        while emitting progress for each item that is processed.
+
+        Returns a ProgressBar yielding items (or index, item) with automatic progress reporting.
+
+        Args:
+            iterable: Items to iterate.
+            total: Optional total length.
+            desc: Label.
+            start: Enumeration start.
+            with_index: Yield index with items.
+            extra: Extra progress fields.
+        """
+        return ProgressBar(
+            iterable=iterable,
+            plugin=self,
+            total=total,
+            desc=desc,
+            start=start,
+            with_index=with_index,
+            extra=extra,
+        )
+
+    @final
     def _set_artifact_callback(
         self, artifact_callback: ArtifactCallback | None
     ) -> None:
@@ -292,3 +330,109 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Use a InputProvider to read the file contents
         """
         return None
+
+
+Item = TypeVar("Item")
+
+
+class ProgressBar(Generic[Item]):
+    """
+    Iterator that wraps an iterable, yielding each item (and optionally its index)
+    and reporting progress via a plugin.
+
+    Each emit reports the progress for the current item that is processed.
+
+    Args:
+        iterable: Items to iterate over.
+        plugin: Receives progress reports (must implement `report_progress`).
+        total: Length of iteration (inferred if not given).
+        desc: Progress label.
+        start: Enumeration start index (min 1 if negative).
+        with_index: Yield (index, item) pairs if True.
+        extra: Extra fields for progress payloads.
+    """
+
+    def __init__(
+        self,
+        iterable: Iterable[Item],
+        *,
+        plugin: BaseEvaluationPlugin,
+        total: int | None = None,
+        desc: str | None = None,
+        start: int = 0,
+        with_index: bool = False,
+        extra: dict | None = None,
+    ):
+        self._start = start
+        self._with_index = with_index
+
+        # infer total if not provided
+        if total is None:
+            if isinstance(iterable, Sized):
+                total = len(iterable)
+            else:
+                iterable = list(iterable)
+                total = len(iterable)
+        self._total = total
+
+        self._desc = desc or ""
+        self._extra = {} if extra is None else extra.copy()
+
+        self._report_progress = getattr(plugin, "report_progress", None)
+
+        # prepare enumerate on iterable with correct start index
+        self._enumerated_iter = enumerate(iterable, start=self._start)
+
+        # start emitting at 0
+        self.emit(0)
+
+    @property
+    def desc(self) -> str:
+        return self._desc
+
+    def set_description(self, description: str):
+        self._desc = description
+
+    @property
+    def extra(self) -> dict:
+        return self._extra
+
+    def set_extra(self, fields: dict) -> None:
+        self._extra.update(fields)
+
+    def emit(self, i: int):
+        """
+        Report progress for index `i` using the plugin.
+        """
+        if self._report_progress and self._total:
+            progress = min(float(min(i, self._total)) / self._total, 1.0)
+            payload = {
+                "iteration": int(i),
+                "total": self._total,
+            }
+            if self._desc:
+                payload["desc"] = self._desc
+            if self._extra:
+                payload.update(self._extra)
+            self._report_progress(
+                TaskProgress(
+                    progress=progress,
+                    extra=payload,
+                )
+            )
+
+    def __iter__(self) -> Self:
+        return self
+
+    def __next__(self) -> Item | tuple[int, Item]:
+        """
+        Yield the next item (and index if requested),
+        emitting progress for the current item being processed.
+
+        Raises:
+            StopIteration when exhausted.
+        """
+        idx, item = next(self._enumerated_iter)
+
+        self.emit(idx - self._start + 1)
+        return (idx, item) if self._with_index else item
