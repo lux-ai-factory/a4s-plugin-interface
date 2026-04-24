@@ -421,6 +421,9 @@ class ProgressBar(Generic[Item]):
                 )
             )
 
+    def __len__(self) -> int:
+        return self._total
+
     def __iter__(self) -> Self:
         return self
 
