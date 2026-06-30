@@ -12,7 +12,6 @@ class MetricDirection(str, enum.Enum):
 class Measure(BaseModel):
     name: str
     description: str | None = None
-    category: str | None = None
     unit: str | None = None
     score: float
     time: datetime = datetime.now()
