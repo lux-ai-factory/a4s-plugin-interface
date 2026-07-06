@@ -4,6 +4,11 @@ import enum
 from pydantic import BaseModel
 
 
+class MetricDirection(str, enum.Enum):
+    HIGHER_IS_BETTER = "higher"
+    LOWER_IS_BETTER = "lower"
+    NEUTRAL = "neutral"
+
 class Measure(BaseModel):
     name: str
     description: str | None = None
@@ -12,6 +17,7 @@ class Measure(BaseModel):
     time: datetime = datetime.now()
     error: str | None = None
     dimensions: dict[str, str | int | bool] | None = None
+    direction: MetricDirection | None = None
 
 
 class ChartType(str, enum.Enum):
