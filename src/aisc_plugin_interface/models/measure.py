@@ -28,3 +28,6 @@ class ChartType(str, enum.Enum):
 class MetricVisualization(BaseModel):
     chart_type: ChartType
     metrics: list[str]
+    title: str | None = None
+    description: str | None = None
+    filter_dimensions: dict[str, str] | None = None
