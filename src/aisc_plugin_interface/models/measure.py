@@ -36,4 +36,5 @@ class MetricVisualization(BaseModel):
     metrics: list[str]
     title: str | None = None
     description: str | None = None
-    filter_dimensions: dict[str, str] | None = None
+    filter_dimensions: dict[str, list[str | int | bool]] | None = None
+    group_by_dimensions: list[str] | None = None
