@@ -20,6 +20,7 @@ from typing import (
 from pydantic import BaseModel, Field
 
 from aisc_plugin_interface.decorators.evaluation_input import InputDefinition
+from aisc_plugin_interface.models.setting_definition import SettingDefinition
 from aisc_plugin_interface.utils import classproperty
 from aisc_plugin_interface.models.task import TaskProgress
 from aisc_plugin_interface.input_providers.base_input_provider import BaseInputProvider
@@ -61,6 +62,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
 
     _input_definitions: list[InputDefinition] = []
     _input_provider_types: dict[str, Type[BaseInputProvider]] = {}
+    _setting_definitions: list[SettingDefinition] = []
 
     def __init__(self):
         self._input_provider_instances: dict[str, BaseInputProvider] = {}
@@ -126,6 +128,10 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         Controls the evaluation input form at evaluation creation
         """
         return self._input_definitions
+
+    @property
+    def setting_definitions(self) -> list[SettingDefinition]:
+        return self._setting_definitions
 
     @property
     def display_icon(self) -> str:
