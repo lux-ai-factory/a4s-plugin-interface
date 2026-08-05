@@ -13,7 +13,7 @@ from aisc_plugin_interface.models.measure import (
 )
 from aisc_plugin_interface.models.evaluation_input import InputDefinition, InputType
 from aisc_plugin_interface.models.task import TaskProgress
-from aisc_plugin_interface.decorators.evaluation_setting import evaluation_setting
+from aisc_plugin_interface.decorators.project_setting import project_setting
 from aisc_plugin_interface.models.setting_definition import SettingCategory, SettingDefinition, SettingValueType
 from aisc_plugin_interface.models.datashape import DataShape, Feature
 
@@ -30,7 +30,7 @@ __all__ = [
     "InputDefinition",
     "InputType",
     "TaskProgress",
-    "evaluation_setting",
+    "project_setting",
     "SettingCategory",
     "SettingDefinition",
     "SettingValueType",

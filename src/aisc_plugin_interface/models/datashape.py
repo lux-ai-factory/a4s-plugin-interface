@@ -1,3 +1,4 @@
+import json
 from datetime import datetime
 from typing import Any, Literal
 from uuid import UUID
@@ -28,10 +29,18 @@ class Feature(BaseModel):
     @model_validator(mode="after")
     def validate_category_fields(self):
         if self.category_mapping is not None and self.semantic_type != "categorical":
-            raise ValueError("category_mapping is only valid for categorical features")
+            self.category_mapping = None
         if self.min is not None and self.max is not None and self.min > self.max:
             raise ValueError("feature min must not exceed max")
         return self
+
+    @property
+    def is_numeric(self) -> bool:
+        return self.semantic_type == "numeric"
+
+    @property
+    def is_categorical(self) -> bool:
+        return self.semantic_type == "categorical"
 
 
 class DataShape(BaseModel):
@@ -50,3 +59,42 @@ class DataShape(BaseModel):
         if len(names) != len(set(names)):
             raise ValueError("datashape feature names must be unique")
         return self
+
+    @classmethod
+    def from_payload(cls, data: dict | str | bytes) -> "DataShape":
+        """
+        Convenience method to parse the DataShape from a dictionary, JSON string, or bytes.
+        Perfect for loading directly from project_settings payloads.
+        """
+        if isinstance(data, (str, bytes)):
+            return cls.model_validate_json(data)
+        return cls.model_validate(data)
+
+    def get_feature(self, name: str) -> Feature | None:
+        """Retrieve a specific feature by its exact name."""
+        for feature in self.features:
+            if feature.name == name:
+                return feature
+        return None
+
+    def get_numeric_features(self) -> list[Feature]:
+        """Convenience method to get all numeric features."""
+        return [f for f in self.features if f.is_numeric]
+
+    def get_categorical_features(self) -> list[Feature]:
+        """Convenience method to get all categorical features."""
+        return [f for f in self.features if f.is_categorical]
+
+    def get_target_feature(self) -> Feature | None:
+        """Retrieve the target feature if one is defined."""
+        for feature in self.features:
+            if feature.role == "target":
+                return feature
+        return None
+
+    def get_date_feature(self) -> Feature | None:
+        """Retrieve the date feature if one is defined."""
+        for feature in self.features:
+            if feature.role == "date":
+                return feature
+        return None

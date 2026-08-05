@@ -19,6 +19,7 @@ from typing import (
 
 from pydantic import BaseModel, Field
 
+from aisc_plugin_interface.models.datashape import DataShape
 from aisc_plugin_interface.decorators.evaluation_input import InputDefinition
 from aisc_plugin_interface.models.setting_definition import SettingDefinition
 from aisc_plugin_interface.utils import classproperty
@@ -66,6 +67,7 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
 
     def __init__(self):
         self._input_provider_instances: dict[str, BaseInputProvider] = {}
+        self._project_settings: dict[str, Any] = {}
         self._progress_callback: ProgressCallback | None = None
         self._artifact_callback: ArtifactCallback | None = None
         self._logger = None
@@ -289,6 +291,47 @@ class BaseEvaluationPlugin[T: BaseModel](ABC):
         if provider is None:
             return None
         return provider.get_data()
+
+    @final
+    def _set_project_settings(self, settings: dict[str, Any]) -> None:
+        """Internal: called by the evaluation runtime before plugin execution."""
+        self._project_settings = copy.deepcopy(settings)
+
+    def get_project_setting(self, key: str, default: Any = None) -> Any:
+        """Return a non-secret project setting by its immutable project key."""
+        return copy.deepcopy(self._project_settings.get(key, default))
+
+    def require_project_setting(self, key: str) -> Any:
+        """Return a non-secret project setting or raise when it is unavailable."""
+        if key not in self._project_settings:
+            raise KeyError(f"Required project setting '{key}' is not available")
+        return copy.deepcopy(self._project_settings[key])
+
+    def get_secret(self, key: str, default: str | None = None) -> str | None:
+        """Read a secret injected into the isolated plugin process environment."""
+        import os
+
+        return os.environ.get(self._secret_environment_name(key), default)
+
+    def require_secret(self, key: str) -> str:
+        """Read a required secret or raise when it is unavailable."""
+        value = self.get_secret(key)
+        if value is None:
+            raise KeyError(f"Required secret '{key}' is not available")
+        return value
+
+    @staticmethod
+    def _secret_environment_name(key: str) -> str:
+        return "AISC_SECRET_" + "".join(
+            character.upper() if character.isalnum() else "_"
+            for character in key
+        )
+
+    def get_datashape(self, key: str) -> DataShape:
+        """Returns the datashape of the evaluation plugin."""
+        datashape_payload = self.get_project_setting(key)
+        datashape = DataShape.from_payload(datashape_payload)
+        return datashape
 
     def get_config_form_schema(self) -> dict:
         """
